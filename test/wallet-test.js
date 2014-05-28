@@ -127,7 +127,7 @@ describe('GreenAddress', function() {
       var bitcoinAmount = 0.001;
       var satoshiAmount = Math.round(bitcoinAmount * 1e8);
       gait.newAddress('testAccount', function (err, addr) {
-        gait._sendFrom('stash', addr, satoshiAmount, 0, function (err) {
+        gait._sendFrom('stash', addr, satoshiAmount, 0, false, function (err) {
           if (err) return done(err);
           gait.addressReceived(addr, 0, function (err, satoshis) {
             try {
@@ -144,7 +144,7 @@ describe('GreenAddress', function() {
       var bitcoinAmount = 0.001;
       var satoshiAmount = Math.round(bitcoinAmount * 1e8);
       gait.newAddress('testAccount', function (err, addr) {
-        gait._sendFrom('stash', addr, satoshiAmount, 0, function (err) {
+        gait._sendFrom('stash', addr, satoshiAmount, 0, false, function (err) {
           if (err) return done(err);
           var check = function(expected, cb) {
             gait.addressReceived(addr, 1, function (err, satoshis) {
@@ -166,6 +166,27 @@ describe('GreenAddress', function() {
         });
       });
     });
+
+    it('should return the correct amount in satoshis after instant confirmation', function(done) {
+      var bitcoinAmount = 0.001;
+      var satoshiAmount = Math.round(bitcoinAmount * 1e8);
+      gait.newAddress('testAccount', function (err, addr) {
+        gait._sendFrom('stash', addr, satoshiAmount, 0, true, function (err) {
+          if (err) return done(err);
+          
+          gait.addressReceived(addr, 1, function (err, satoshis) {
+            try {
+              assert.isNull(err);
+              assert.equal(satoshis, satoshiAmount);
+            } catch (e) { return done(e); }
+            done();
+          });
+          
+        });
+      });
+    });
+
+
 
   });
 
@@ -200,7 +221,7 @@ describe('GreenAddress', function() {
         });
 
         gait.newAddress('funding', function (err, addr) {
-          gait._sendFrom('stash', addr, satoshiAmount, 0, function (err) {
+          gait._sendFrom('stash', addr, satoshiAmount, 0, false, function (err) {
             if (err) return done(err);
             gait.monitorAccount('funding', function (err, balance, txIds) {
               if (err) return done(err);
@@ -230,7 +251,7 @@ describe('GreenAddress', function() {
       });
 
       gait.newAddress('funding', function (err, addr) {
-        gait._sendFrom('stash', addr, satoshiAmount, 0, function (err) {
+        gait._sendFrom('stash', addr, satoshiAmount, 0, false, function (err) {
           if (err) return done(err);
           var check = function() {
             gait.monitorAccount('funding', function (err, balance, txIds) {
@@ -245,7 +266,7 @@ describe('GreenAddress', function() {
               done();              
             });
           };
-          if (rpc) {
+          if (rpc) {  // otherwise testMode is truw which means monitorAccount doesn't check for confirmations
             gait.conn.once('block_count', check);
             rpc.setGenerate(true, function(err) { if(err) done(err); });
           } else check();
