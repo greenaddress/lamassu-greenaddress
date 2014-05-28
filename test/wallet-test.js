@@ -18,8 +18,10 @@ describe('GreenAddress', function() {
     var seed = '8cbc3ecbc23a398838ab18a45d0260fc8297e22458286b25e3c672e25f7853248a946c4673430f3e23d82db19a80632726412bf1521c4b657ad6ad8501950a2f';
     var hdwallet = Bitcoin.HDWallet.fromSeedHex(seed, cur_net);
 
-    gait = GreenAddress.factory({ws_url: 'wss://testwss.greenaddress.it/ws/inv',
-                                 hdwallet: hdwallet});
+    gait = GreenAddress.factory({ws_url: 'ws://localhost:9335/ws/inv',
+                                 token_url: 'http://localhost:9908/token/',
+                                 hdwallet: hdwallet,
+                                 additional_accounts: [[10, 'stash'], [11, 'testAccount']]});
     gait.testMode = true;
     gait.PER_TRANSACTION_SPLIT_COUNT = 3;
     gait.SPLIT_COUNT = 6;
@@ -29,27 +31,14 @@ describe('GreenAddress', function() {
 
   // Move everything in funding account back to stash account
   beforeEach(function (done) {
-    async.series([
-      function(cb) {
-        // create accounts with additional 'stash' and 'testAccount' accounts
-        gait.makeAccounts(cb, [[10, 'stash'], [11, 'testAccount']]);
-      },
-      function() {
-        gait._getBalance('funding', /* 0, */ function (err, balance) {
-          if (err) throw err;
-          if (balance === 0) return done();
-          gait._move('funding', 'stash', balance, /* 0, */ function (err) {
-            if (err) throw err;
-            done();
-          });
-        });
-      }
-    ],
-    function(err) {
-      assert.isNull(err);
-      done();
-    });
-    
+    gait._getBalance('funding', /* 0, */ function (err, balance) {
+      if (err) return done(err);
+      if (balance === 0) return done();
+      gait._move('funding', 'stash', balance, /* 0, */ function (err) {
+        if (err) return done(err);
+        done();
+      });
+    });  
   });
 
   afterEach(function () {
