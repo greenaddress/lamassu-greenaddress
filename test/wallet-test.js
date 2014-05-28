@@ -122,6 +122,7 @@ describe('GreenAddress', function() {
       });
     });
 
+
     it('should return the correct amount in satoshis', function(done) {
       var bitcoinAmount = 0.001;
       var satoshiAmount = Math.round(bitcoinAmount * 1e8);
@@ -135,6 +136,33 @@ describe('GreenAddress', function() {
             } catch (e) { return done(e); }
             done();
           });
+        });
+      });
+    });
+
+    it('should return the correct amount in satoshis only after confirmation', function(done) {
+      var bitcoinAmount = 0.001;
+      var satoshiAmount = Math.round(bitcoinAmount * 1e8);
+      gait.newAddress('testAccount', function (err, addr) {
+        gait._sendFrom('stash', addr, satoshiAmount, 0, function (err) {
+          if (err) return done(err);
+          var check = function(expected, cb) {
+            gait.addressReceived(addr, 1, function (err, satoshis) {
+              try {
+                assert.isNull(err);
+                assert.equal(satoshis, expected);
+              } catch (e) { return cb(e); }
+              cb();
+            });
+          };
+          check(0, function(err) {
+            if (err) return done(err);
+            if (rpc) {
+              gait.conn.once('block_count', function() { check(satoshiAmount, done); });
+              rpc.setGenerate(true, function(err) { if(err) done(err); });
+            }
+          }); // before confirmation, amount should equal to 0
+          
         });
       });
     });
@@ -219,7 +247,7 @@ describe('GreenAddress', function() {
           };
           if (rpc) {
             gait.conn.once('block_count', check);
-            rpc.setGenerate(true);
+            rpc.setGenerate(true, function(err) { if(err) done(err); });
           } else check();
         });
       });
