@@ -1,0 +1,27 @@
+{
+  "name": "lamassu-greenaddress",
+  "version": "0.0.0",
+  "description": "Lamassu GreenAddress module",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "tap ./test"
+  },
+  "keywords": [
+    "Lamassu",
+    "Bitcoin",
+    "GreenAddress"
+  ],
+  "author": "GreenAddress (https://greenaddress.it)",
+  "license": "MIT",
+  "devDependencies": {
+    "chai": "~1.9.1"
+  },
+  "dependencies": {
+    "amdefine": ">=0.1.0",
+    "ws": ">= 0.4.31",
+    "bip39": "~1.0.4",
+    "bitcoinjs-lib": "~0.2.0",
+    "when": "~3.2.1",
+    "crypto-js": "~3.1.2"
+  }
+}
