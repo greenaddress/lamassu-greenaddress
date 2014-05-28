@@ -2,13 +2,30 @@
 
 var async = require('async');
 var assert = require('chai').assert;
+var fs = require('fs');
 
 var BIP39 = require('bip39');
 var Bitcoin = require('bitcoinjs-lib');
 var GreenAddress = require('../lib/wallet.js');
 
+function parseBitcoinConfiguration(configurationPath) {
+  var conf = fs.readFileSync(configurationPath);
+  var lines = conf.toString().split('\n');
+  var res = {};
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    var arr = line.split('=');
+    var name = arr[0];
+    var value = arr[1];
+    if (!value) continue;
+    res[name] = value;
+  }
+
+  return res; 
+}
+
 describe('GreenAddress', function() {
-  var gait = null;
+  var gait = null, rpc = null;
   before(function () {
     var mnemonic = 'invite often tiny staff depend stove wave day august maid tonight exclude denial vast keep dragon dilemma gossip sample coil kick frost lion nice';
     var cur_net = 'testnet';  // 'mainnet' for main net
@@ -21,8 +38,21 @@ describe('GreenAddress', function() {
     gait = GreenAddress.factory({ws_url: 'ws://localhost:9335/ws/inv',
                                  token_url: 'http://localhost:9908/token/',
                                  hdwallet: hdwallet,
-                                 additional_accounts: [[10, 'stash'], [11, 'testAccount']]});
-    gait.testMode = true;
+                                 additional_accounts: [[10, 'stash'],
+                                                       [11, 'testAccount']]});
+    if (fs.existsSync('test/bitcoin.conf')) {
+      var bitcoindConfiguration = parseBitcoinConfiguration('test/bitcoin.conf');
+      var rpcConfig = {
+        protocol: 'http',
+        user: bitcoindConfiguration.rpcuser,
+        pass: bitcoindConfiguration.rpcpassword,
+        port: bitcoindConfiguration.rpcport || 18332
+      };
+      var bitcoin = require('bitcoin');
+      rpc = new bitcoin.Client(rpcConfig);
+    } else {
+      gait.testMode = true;
+    }
     gait.PER_TRANSACTION_SPLIT_COUNT = 3;
     gait.SPLIT_COUNT = 6;
     gait.SPLIT_TRANSACTION_COUNT = 2;
@@ -31,11 +61,11 @@ describe('GreenAddress', function() {
 
   // Move everything in funding account back to stash account
   beforeEach(function (done) {
-    gait._getBalance('funding', /* 0, */ function (err, balance) {
+    gait._getBalance('funding', 0, function (err, balance) {
       if (err) return done(err);
       if (balance === 0) return done();
       gait._move('funding', 'stash', balance, /* 0, */ function (err) {
-        if (err) return done(err);
+        if (err) return done(new Error(err.desc || err));
         done();
       });
     });  
@@ -127,8 +157,40 @@ describe('GreenAddress', function() {
     });
   });
 
+  if (fs.existsSync('test/bitcoin.conf')) {
+    describe('#monitorAccountNoConfs', function() {
+      it('should do nothing without confirmations', function(done) {
+        var self = this;
+        var fundEmitted = null;
+        var satoshiAmount = 10 * gait.EPSILON;
+
+        gait.once('error', function () {
+          assert.fail('shouldn\'t have errored');
+        });
+        gait.once('funded', function () {
+          assert.fail('funding account should be empty');
+        });
+
+        gait.newAddress('funding', function (err, addr) {
+          gait._sendFrom('stash', addr, satoshiAmount, 0, function (err) {
+            if (err) return done(err);
+            gait.monitorAccount('funding', function (err, balance, txIds) {
+              if (err) return done(err);
+              try {
+                assert.isNull(err);
+                assert.isNull(balance);
+              } catch (e) { return done(e); }
+              done();              
+            });
+          });
+        });
+      });
+    });
+  }
+
   describe('#monitorAccount', function() {
     it('should emit "funded" event on funded account', function(done) {
+      var self = this;
       var fundEmitted = null;
       var satoshiAmount = 10 * gait.EPSILON;
 
@@ -142,17 +204,23 @@ describe('GreenAddress', function() {
       gait.newAddress('funding', function (err, addr) {
         gait._sendFrom('stash', addr, satoshiAmount, 0, function (err) {
           if (err) return done(err);
-          gait.monitorAccount('funding', function (err, balance, txIds) {
-            if (err) return done(err);
-            try {
-              assert.isNull(err);
-              assert.equal(balance, satoshiAmount);
-              assert.equal(fundEmitted.balance, satoshiAmount);
-              assert.equal(fundEmitted.account, 'funding');
-              assert.ok(txIds.length);
-            } catch (e) { return done(e); }
-            done();              
-          });
+          var check = function() {
+            gait.monitorAccount('funding', function (err, balance, txIds) {
+              if (err) return done(err);
+              try {
+                assert.isNull(err);
+                assert.equal(balance, satoshiAmount);
+                assert.equal(fundEmitted.balance, satoshiAmount);
+                assert.equal(fundEmitted.account, 'funding');
+                assert.ok(txIds.length);
+              } catch (e) { return done(e); }
+              done();              
+            });
+          };
+          if (rpc) {
+            gait.conn.once('block_count', check);
+            rpc.setGenerate(true);
+          } else check();
         });
       });
     });
