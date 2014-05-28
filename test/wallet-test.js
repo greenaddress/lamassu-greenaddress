@@ -160,7 +160,7 @@ describe('GreenAddress', function() {
             if (rpc) {
               gait.conn.once('block_count', function() { check(satoshiAmount, done); });
               rpc.setGenerate(true, function(err) { if(err) done(err); });
-            }
+            } else done();
           }); // before confirmation, amount should equal to 0
           
         });
@@ -185,8 +185,6 @@ describe('GreenAddress', function() {
         });
       });
     });
-
-
 
   });
 
