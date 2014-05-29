@@ -27,16 +27,26 @@ function parseBitcoinConfiguration(configurationPath) {
 describe('GreenAddress', function() {
   var gait = null, rpc = null;
   before(function () {
-    var mnemonic = 'invite often tiny staff depend stove wave day august maid tonight exclude denial vast keep dragon dilemma gossip sample coil kick frost lion nice';
+    //regtest:
+    //var mnemonic = 'invite often tiny staff depend stove wave day august maid tonight exclude denial vast keep dragon dilemma gossip sample coil kick frost lion nice';
+    //testnet:
+    var mnemonic = 'rib bike egg uniform net struggle champion mechanic want valid city patrol bleak potato risk fashion neutral anxiety seek deputy split mad aisle typical';
     var cur_net = 'testnet';  // 'mainnet' for main net
     var bip39 = new BIP39();
     //var seed = bip39.mnemonicToSeed(mnemonic);  // this is slow, perhaps move to a webworker
     //console.log(seed);
-    var seed = '8cbc3ecbc23a398838ab18a45d0260fc8297e22458286b25e3c672e25f7853248a946c4673430f3e23d82db19a80632726412bf1521c4b657ad6ad8501950a2f';
+    //regtest:
+    //var seed = '8cbc3ecbc23a398838ab18a45d0260fc8297e22458286b25e3c672e25f7853248a946c4673430f3e23d82db19a80632726412bf1521c4b657ad6ad8501950a2f';
+    //testnet:
+    var seed = '3286ab6509b12c75b65e4271b9565771cc041e0560c516bcfc4d483d19227f6d34493075fcaae5d43ea0285798f87c18a0600ba33ce64ca7484f5a43e4ca136e';
     var hdwallet = Bitcoin.HDWallet.fromSeedHex(seed, cur_net);
 
-    gait = GreenAddress.factory({ws_url: 'ws://localhost:9335/ws/inv',
-                                 token_url: 'http://localhost:9908/token/',
+    gait = GreenAddress.factory({//regtest:
+                                 //ws_url: 'ws://localhost:9335/ws/inv',
+                                 //token_url: 'http://localhost:9908/token/',
+                                 //testnet:
+                                 ws_url: 'wss://testwss.greenaddress.it/ws/inv',
+                                 token_url: 'https://test.greenaddress.it/token/',
                                  hdwallet: hdwallet,
                                  additional_accounts: [[10, 'stash'],
                                                        [11, 'testAccount']]});
